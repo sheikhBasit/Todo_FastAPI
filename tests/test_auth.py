@@ -29,3 +29,12 @@ async def test_protected_route_access(client):
     # Try to access suggestions without a token (Path: /tasks/suggestions)
     response = await client.get("/tasks/suggestions")
     assert response.status_code == 401
+
+# tests/test_auth.py
+async def test_register(client):
+    response = await client.post("/auth/register", json={
+        "email": "tester@example.com",
+        "username": "tester",
+        "password": "password123"
+    })
+    assert response.status_code == 200

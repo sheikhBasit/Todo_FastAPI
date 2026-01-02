@@ -12,6 +12,88 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 # Initialize Groq Client
 client = AsyncGroq(api_key=config.settings.GROQ_API_KEY)
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, joinedload
+from typing import List, Optional
+from ..config import database
+from ..utils import auth
+from ..models import model as models
+from ..schemas import tasks as schemas
+
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
+
+# --- CATEGORY-BASED HEURISTIC ENGINE ---
+def analyze_tasks_heuristically(tasks: List[models.Task]) -> str:
+    if not tasks:
+        return "Your schedule is clear! It's a great time to start a new project in your 'Learning' group."
+
+    # 1. Scoring Logic
+    HIGH_PRIORITY_KEYWORDS = ["finish", "submit", "deadline", "urgent", "important", "review", "bill"]
+    
+    # 2. Category Advice (Based on Seed Data Groups)
+    CATEGORY_TIPS = {
+        "Work": "Focus on deep work sessions for your professional projects.",
+        "Personal": "Don't forget to balance your productivity with self-care.",
+        "Fitness": "Physical activity boosts mental clarity. Keep moving!",
+        "Learning": "Consistency is key to mastering new skills. Spend 15 minutes on this today.",
+        "Shopping": "Try to batch your errands to save time and energy."
+    }
+
+    scored_tasks = []
+    category_counts = {}
+
+    for task in tasks:
+        score = 0
+        # Title/Description weight
+        content = (task.title + " " + (task.description or "")).lower()
+        if any(word in content for word in HIGH_PRIORITY_KEYWORDS):
+            score += 5
+        
+        # Category weight (Work/Learning often have higher priority)
+        group_name = task.group.name if task.group else "General"
+        if group_name in ["Work", "Learning"]:
+            score += 2
+        
+        # Count categories to find dominant focus
+        category_counts[group_name] = category_counts.get(group_name, 0) + 1
+        
+        scored_tasks.append({"score": score, "title": task.title, "group": group_name})
+
+    # Sort to find the highest priority task
+    scored_tasks.sort(key=lambda x: x["score"], reverse=True)
+    top_item = scored_tasks[0]
+    
+    # Find most crowded category
+    dominant_cat = max(category_counts, key=category_counts.get)
+    cat_tip = CATEGORY_TIPS.get(dominant_cat, "Keep up the great work!")
+
+    # Generate the "AI" response
+    return (
+        f"AI Suggestion: Based on your {dominant_cat} focus, {cat_tip} "
+        f"I recommend starting with '{top_item['title']}' as it appears most critical."
+    )
+
+@router.get("/suggestions")
+async def get_ai_suggestions(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Requirement: Use JOINs to fetch tasks with group details for the heuristic
+    tasks = db.query(models.Task).options(joinedload(models.Task.group)).filter(
+        models.Task.user_id == current_user.id,
+        models.Task.is_completed == False
+    ).all()
+
+    tip = analyze_tasks_heuristically(tasks)
+
+    return {
+        "tip": tip,
+        "user": current_user.username,
+        "active_tasks": len(tasks),
+        "engine": "Category-Aware Heuristic Stub v2.0"
+    }
+
+
 @router.post("/", response_model=schemas.Task, status_code=201)
 def create_task(task: schemas.TaskCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
     # ACCESS CONTROL: Verify the target group actually belongs to the logged-in user
@@ -61,28 +143,30 @@ def get_task(id: int, db: Session = Depends(database.get_db), current_user: mode
         raise HTTPException(status_code=404, detail="Task not found")
     return task
 
-@router.get("/suggestions")
-async def get_ai_suggestions(
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    # Fetch user tasks with group info for better AI context
-    tasks = db.query(models.Task).options(joinedload(models.Task.group)).filter(models.Task.user_id == current_user.id).all()
-    
-    task_context = [f"- {t.title} (Category: {t.group.name if t.group else 'General'})" for t in tasks]
-    context_str = "\n".join(task_context) if task_context else "No tasks currently."
 
-    try:
-        completion = await client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "You are a productivity coach. Provide one short, actionable tip based on the user's task list."},
-                {"role": "user", "content": f"My tasks:\n{context_str}"}
-            ],
-            model="llama-3.3-70b-versatile",
-        )
-        return {"tip": completion.choices[0].message.content, "user": current_user.username}
-    except Exception as e:
-        return {"tip": "Organize your tasks by priority!", "error": "AI service temporarily unavailable"}
+
+# @router.get("/suggestions")
+# async def get_ai_suggestions(
+#     db: Session = Depends(database.get_db),
+#     current_user: models.User = Depends(auth.get_current_user)
+# ):
+#     # Fetch user tasks with group info for better AI context
+#     tasks = db.query(models.Task).options(joinedload(models.Task.group)).filter(models.Task.user_id == current_user.id).all()
+    
+#     task_context = [f"- {t.title} (Category: {t.group.name if t.group else 'General'})" for t in tasks]
+#     context_str = "\n".join(task_context) if task_context else "No tasks currently."
+
+#     try:
+#         completion = await client.chat.completions.create(
+#             messages=[
+#                 {"role": "system", "content": "You are a productivity coach. Provide one short, actionable tip based on the user's task list."},
+#                 {"role": "user", "content": f"My tasks:\n{context_str}"}
+#             ],
+#             model="llama-3.3-70b-versatile",
+#         )
+#         return {"tip": completion.choices[0].message.content, "user": current_user.username}
+#     except Exception as e:
+#         return {"tip": "Organize your tasks by priority!", "error": "AI service temporarily unavailable"}
 
 @router.put("/{id}", response_model=schemas.Task)
 def update_task(id: int, task: schemas.TaskUpdate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
