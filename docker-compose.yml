@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: todo_db
+    restart: always
+    environment:
+      - POSTGRES_USER=neondb_owner
+      - POSTGRES_PASSWORD=npg_HT6Pe4milfFM
+      - POSTGRES_DB=todo_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    container_name: todo_api
+    # This points to the app folder -> main.py file -> app object
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://neondb_owner:npg_HT6Pe4milfFM@ep-plain-night-ahhzi0bd-pooler.c-3.us-east-1.aws.neon.tech/todo_db?sslmode=require&channel_binding=require
+      - GROQ_API_KEY=${GROQ_API_KEY}
+
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
