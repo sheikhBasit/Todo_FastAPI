@@ -1,4 +1,6 @@
 services:
+  # 1. Keep the local DB service ONLY if you want a local copy for testing.
+  # If you are strictly using Neon, you can delete this 'db' section.
   db:
     image: postgres:15-alpine
     container_name: todo_db
@@ -15,16 +17,17 @@ services:
   web:
     build: .
     container_name: todo_api
-    # This points to the app folder -> main.py file -> app object
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Correct syntax for Hypercorn
+    command: hypercorn app.main:app --bind 0.0.0.0:8000 --reload
     volumes:
       - .:/code
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://neondb_owner:npg_HT6Pe4milfFM@ep-plain-night-ahhzi0bd-pooler.c-3.us-east-1.aws.neon.tech/todo_db?sslmode=require&channel_binding=require
+      # Use variables from .env to prevent GitHub push blocks
+      - DATABASE_URL=${DATABASE_URL}
       - GROQ_API_KEY=${GROQ_API_KEY}
-
+    # Keep this only if you are using the local 'db' service above
     depends_on:
       - db
 

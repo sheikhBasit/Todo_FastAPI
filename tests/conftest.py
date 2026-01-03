@@ -39,7 +39,7 @@ def anyio_backend():
     return "asyncio"
 
 @pytest.fixture(scope="function")
-def db_session():
+def db():
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
     try:
@@ -49,11 +49,11 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture(scope="function")
-async def client(db_session):
+async def client(db):
     """A basic client for testing Auth routes (register/login)"""
     def override_get_db():
         try:
-            yield db_session
+            yield db
         finally:
             pass
     app.dependency_overrides[get_db] = override_get_db
@@ -62,7 +62,7 @@ async def client(db_session):
     app.dependency_overrides.clear()
 
 @pytest.fixture(scope="function")
-async def auth_client(client, db_session):
+async def auth_client(client, db):
     """
     A client that comes pre-authenticated with a test user.
     Use this for testing Groups and Tasks.
@@ -71,9 +71,9 @@ async def auth_client(client, db_session):
     user_data = {"username": "testuser", "email": "test@example.com"}
     hashed_pwd = auth.get_password_hash("password123")
     test_user = models.User(**user_data, password_hash=hashed_pwd)
-    db_session.add(test_user)
-    db_session.commit()
-    db_session.refresh(test_user)
+    db.add(test_user)
+    db.commit()
+    db.refresh(test_user)
 
     # 2. Generate a token
     access_token = auth.create_access_token(data={"sub": test_user.username})

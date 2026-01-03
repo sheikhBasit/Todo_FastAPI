@@ -1,5 +1,4 @@
 fastapi
-uvicorn[standard]
 sqlalchemy
 psycopg2-binary
 alembic
@@ -14,3 +13,6 @@ requests
 pytest
 httpx
 pytest-asyncio
+slowapi
+hypercorn
+h2

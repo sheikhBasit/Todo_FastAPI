@@ -1,7 +1,9 @@
 #!/bin/bash
 # Wait for DB to be ready
 echo "Waiting for postgres..."
-# Run migrations
+
+echo "Running migrations..."
 alembic upgrade head
-# Start the application
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+echo "Starting Hypercorn (HTTP/2 enabled)..."
+hypercorn app.main:app --bind 0.0.0.0:8000 --reload

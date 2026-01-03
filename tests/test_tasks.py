@@ -1,5 +1,5 @@
 # tests/test_tasks.py
-async def test_create_task(auth_client, db_session):
+async def test_create_task(auth_client, db):
     # First create a group (since tasks need group_id)
     group = await auth_client.post("/groups/", json={"name": "Work"})
     group_id = group.json()["id"]

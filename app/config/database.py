@@ -5,14 +5,18 @@ from sqlalchemy.engine import URL, make_url
 from .config import settings
 
 # 1. Get the URL from settings
-SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
+SQLALCHEMY_DATABASE_URL = settings.database_url_str
 
 # 2. Create the Engine
 # Note: Since you are using Neon (Serverless), it's often good to add 
 # pool_pre_ping=True to handle connection drops automatically.
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    pool_size=10,  # Maximum number of connections in the pool
+    max_overflow=20,  # Maximum number of connections to overflow beyond pool_size
+    pool_timeout=30,  # Maximum time to wait for a connection
+    pool_recycle=1800  # Recycle connections after 30 minutes
 )
 
 # 3. Setup the Session factory
