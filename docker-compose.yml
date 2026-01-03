@@ -26,7 +26,6 @@ services:
     environment:
       # Use variables from .env to prevent GitHub push blocks
       - DATABASE_URL=${DATABASE_URL}
-      - GROQ_API_KEY=${GROQ_API_KEY}
     # Keep this only if you are using the local 'db' service above
     depends_on:
       - db
