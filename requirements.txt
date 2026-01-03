@@ -8,7 +8,6 @@ python-jose[cryptography]
 passlib[bcrypt]
 pydantic[email]
 pydantic-settings   
-groq
 requests
 pytest
 httpx

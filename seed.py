@@ -1,103 +1,101 @@
 import requests
+import random
 import time
 
 BASE_URL = "http://localhost:8000"
 
-# Sample Data
-CATEGORIES = ["Work", "Personal", "Fitness", "Learning", "Shopping"]
-
-TASK_TEMPLATES = {
+# --- EXPANDED TASK POOL ---
+# We add many more options so users don't look identical
+TASK_POOL = {
     "Work": [
-        {"title": "Complete API Docs", "description": "Finish the Swagger documentation for the ToDo project."},
-        {"title": "Team Sync", "description": "Weekly meeting to discuss sprint goals."}
-    ],
-    "Personal": [
-        {"title": "Grocery Shopping", "description": "Buy milk, eggs, and healthy snacks."},
-        {"title": "Clean Apartment", "description": "Vacuum the floors and dust the shelves."}
-    ],
-    "Fitness": [
-        {"title": "Gym - Leg Day", "description": "Focus on squats and lunges."},
-        {"title": "Yoga Session", "description": "30 mins of stretching and breathing."}
+        {"title": "Submit Project Alpha", "description": "Critical deadline approaching."},
+        {"title": "Review Bug Reports", "description": "Important for the next release."},
+        {"title": "Team Standup", "description": "Routine morning sync."},
+        {"title": "Email Client", "description": "Follow up on the invoice."},
+        {"title": "Finish Slide Deck", "description": "Urgent: Presentation at 3 PM."}
     ],
     "Learning": [
-        {"title": "Read Python Docs", "description": "Read about new features in Python 3.13."},
-        {"title": "Groq API Research", "description": "Learn how to optimize system prompts for Llama 3."}
+        {"title": "Finish Docker Course", "description": "Urgent certification goal."},
+        {"title": "Read SQLAlchemy Docs", "description": "Learn about advanced joins."},
+        {"title": "Practice LeetCode", "description": "Keep algorithms sharp."},
+        {"title": "Submit Research Paper", "description": "Final deadline for submission."},
+        {"title": "Watch FastAPI Tutorial", "description": "Improve backend skills."}
+    ],
+    "Fitness": [
+        {"title": "Urgent Physio Session", "description": "Recovery for the injury."},
+        {"title": "Go for a Run", "description": "Target: 5km in 25 mins."},
+        {"title": "Gym - Chest Day", "description": "Focus on bench press."},
+        {"title": "Check Weight Progress", "description": "Weekly monitoring."},
+        {"title": "Buy Protein Powder", "description": "Supplements are running low."}
+    ],
+    "Personal": [
+        {"title": "Pay Electricity Bill", "description": "Deadline is today!"},
+        {"title": "Call Home", "description": "Check in with family."},
+        {"title": "Submit Tax Return", "description": "Important financial task."},
+        {"title": "Organize Room", "description": "Cleanup session."},
+        {"title": "Book Dental Exam", "description": "Routine checkup needed."}
     ],
     "Shopping": [
-        {"title": "Buy Birthday Gift", "description": "Get something special for Sarah's party."},
-        {"title": "Order Books", "description": "Get 'Clean Code' and 'Designing Data-Intensive Applications'."}
+        {"title": "Buy Urgent Groceries", "description": "Milk and eggs are finished."},
+        {"title": "Order New Laptop", "description": "The current one is lagging."},
+        {"title": "Check Gift Deals", "description": "Buy something for Sarah's birthday."},
+        {"title": "Review Cart", "description": "Amazon checkout list."},
+        {"title": "Finish Shopping List", "description": "Write down items for the weekend."}
     ]
 }
 
+CATEGORIES = list(TASK_POOL.keys())
+
 def seed():
-    print(f"🚀 Starting API-based seeding at {BASE_URL}...")
+    print(f"🚀 Starting Randomized API Seeding at {BASE_URL}...")
 
     for i in range(1, 11):
-        username = f"user_{i}"
+        username = f"DevUser{i}"
         email = f"user{i}@example.com"
         password = "password123"
 
-        # 1. REGISTER
-        reg_payload = {
-            "username": username,
-            "email": email,
-            "password": password
-        }
+        # 1. REGISTER & LOGIN
+        reg_payload = {"username": username, "email": email, "password": password}
+        requests.post(f"{BASE_URL}/auth/register", json=reg_payload)
         
-        print(f"\n👤 Processing {username}...")
-        resp = requests.post(f"{BASE_URL}/auth/register", json=reg_payload)
-        
-        if resp.status_code == 400:
-            print(f"   - User already exists. Proceeding to login.")
-        elif resp.status_code != 200:
-            print(f"   - Failed to register: {resp.text}")
-            continue
-
-        # 2. LOGIN (to get Token)
-        # Note: OAuth2PasswordRequestForm expects form-data, not JSON
         login_data = {"username": username, "password": password}
         login_resp = requests.post(f"{BASE_URL}/auth/login", data=login_data)
         
         if login_resp.status_code != 200:
-            print(f"   - Login failed for {username}")
+            print(f"❌ Failed to process {username}")
             continue
         
         token = login_resp.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # 3. CREATE GROUPS
-        for cat in CATEGORIES:
-            group_resp = requests.post(
-                f"{BASE_URL}/groups/", 
-                json={"name": cat}, 
-                headers=headers
-            )
+        # 2. RANDOMIZED SELECTION
+        # Pick 2 or 3 random categories for this specific user
+        user_categories = random.sample(CATEGORIES, k=random.randint(2, 4))
+        
+        print(f"👤 {username}: Selected {len(user_categories)} categories...")
+
+        for cat in user_categories:
+            # Create Group
+            group_resp = requests.post(f"{BASE_URL}/groups/", json={"name": cat}, headers=headers)
             
             if group_resp.status_code == 200:
                 group_id = group_resp.json()["id"]
-                print(f"   - Created Group: {cat}")
-
-                # 4. CREATE TASKS IN THIS GROUP
-                for task_data in TASK_TEMPLATES[cat]:
+                
+                # Pick 2-3 random tasks from the pool for this category
+                tasks_to_add = random.sample(TASK_POOL[cat], k=random.randint(1, 3))
+                
+                for task_info in tasks_to_add:
                     task_payload = {
-                        "title": task_data["title"],
-                        "description": task_data["description"],
+                        "title": task_info["title"],
+                        "description": task_info["description"],
                         "group_id": group_id,
                         "is_completed": False
                     }
-                    task_resp = requests.post(
-                        f"{BASE_URL}/tasks/", 
-                        json=task_payload, 
-                        headers=headers
-                    )
-                    if task_resp.status_code == 201 or task_resp.status_code == 200:
-                        pass # Successfully created
-            else:
-                print(f"   - Failed to create group {cat}: {group_resp.text}")
+                    requests.post(f"{BASE_URL}/tasks/", json=task_payload, headers=headers)
+        
+        print(f"✅ {username}: Data seeded with unique priority.")
 
-    print("\n✅ Seeding complete! 10 users created with full task history.")
-    print(f"🔗 Documentation: {BASE_URL}/docs")
+    print("\n🏁 Randomized Seeding Complete!")
 
 if __name__ == "__main__":
-    # Small delay to ensure server is up if running in a script sequence
     seed()
