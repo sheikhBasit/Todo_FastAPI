@@ -1,12 +1,11 @@
 from importlib import import_module
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from .config.database import engine, Base
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.middleware import SlowAPIMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
 from starlette.responses import Response
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.middleware.authentication_middleware import AuthenticationMiddleware
@@ -52,7 +51,7 @@ for module_name in ROUTER_MODULES:
     module = import_module(f".routers.{module_name}", package="app")
     app.include_router(module.router)
 
-@limiter.limit("5/minute")
 @app.get("/")
-def root():
+@limiter.limit("5/minute")
+def root(request: Request):
     return {"message": "API is online. Go to /docs for Swagger UI"}
