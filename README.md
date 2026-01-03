@@ -16,7 +16,6 @@ A robust, asynchronous **FastAPI** application for managing tasks and groups. Th
 
 * **Automatic Inbox:** Every new user gets an "Inbox" group automatically via SQLAlchemy event listeners upon registration.
 * **Smart Indexing:** Composite unique constraints ensure task titles are unique **within a group** per user, preventing messy duplicates while allowing flexibility across different groups.
-* **AI Integration:** Powered by **Groq/LLM** to provide intelligent task descriptions and planning suggestions.
 * **Security & Performance:** Protected by **SlowAPI** rate limiting and organized with custom middlewares for logging and GZip compression.
 
 ---
@@ -25,7 +24,7 @@ A robust, asynchronous **FastAPI** application for managing tasks and groups. Th
 
 ### 1. Environment Configuration
 
-Copy the template file and update it with your **Postgres URL** (Neon.tech recommended), **Secret Key**, and **Groq API Key**:
+Copy the template file and update it with your **Postgres URL** (Neon.tech recommended), **Secret Key**:
 
 ```bash
 cp .env.example .env
