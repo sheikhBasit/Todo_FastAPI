@@ -54,5 +54,5 @@ for module_name in ROUTER_MODULES:
 
 @limiter.limit("5/minute")
 @app.get("/")
-def root(request):
+def root():
     return {"message": "API is online. Go to /docs for Swagger UI"}
